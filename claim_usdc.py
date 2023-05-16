@@ -1,0 +1,67 @@
+import logging
+import time
+from logging.handlers import RotatingFileHandler
+
+from aptos_sdk.account import Account
+from aptos_sdk.client import RestClient
+
+from database.models import PolygonAptosBridge
+
+logger = logging.getLogger('stgstacking')
+file_handler = RotatingFileHandler(
+    filename='logs.log',
+    maxBytes=1024 * 1024 * 5,  # 5 MB
+    backupCount=10,
+    encoding='UTF-8',
+)
+formatter = logging.Formatter(
+    '%(asctime)s [%(levelname)s] - %(message)s', '%Y-%m-%d %H:%M:%S'
+)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+logger.setLevel(logging.INFO)
+
+NODE_URL = 'https://fullnode.mainnet.aptoslabs.com/v1'
+USDC_RESOURCE = '0x1::coin::CoinStore<0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::asset::USDC>'
+
+
+def claim_usdc(db_obj: PolygonAptosBridge):
+    try:
+        payload = {
+          "type": "entry_function_payload",
+          "arguments": [],
+          "function": "0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::coin_bridge::claim_coin",
+          "type_arguments": [
+            "0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::asset::USDC"
+          ]
+        }
+        account = Account.load_key(db_obj.privateKeyAptos)
+        txn = client.submit_transaction(
+            sender=account,
+            payload=payload
+        )
+        client.wait_for_transaction(txn)
+        time.sleep(5)
+        usdc_balance_data = client.account_resource(account.address(), USDC_RESOURCE)
+        usdc_balance = usdc_balance_data['data']['coin']['value']
+        db_obj.claim()
+        logger.info(f"{account.address().hex()} | УСПЕШНО claim {usdc_balance} USDC  tx {txn}")
+    except Exception as error:
+        logger.info(f"{account.address().hex()} | НЕ УСПЕШНО claim USDC | {error}")
+
+
+if __name__ == '__main__':
+    file = 'claim_accounts.tsv'
+    with open(file, "r") as f:
+        keys_list = [row.strip() for row in f]
+    client = RestClient(NODE_URL)
+    client.client_config.max_gas_amount = 1000
+
+    for private_key in keys_list:
+        db_obj = PolygonAptosBridge.get_by_key_from(key=private_key, amount=True)
+        if not db_obj:
+            continue
+        claim_usdc(db_obj)
