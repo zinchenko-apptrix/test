@@ -59,20 +59,19 @@ def parse_args():
         '--transfer-percent',
         help='Сколько баланса USDC переводим, %',
         type=int,
-        default=100,
+        default=10,
     )
     parser.add_argument(
-        '--transfer-zksync-fee-max',
-        help='Максимальная стоимость трансфера внутри zkSync ETH',
-        type=float,
-        default=0.0001,
+        '--claim',
+        help='Делать ли claim токенов на стороне APTOS',
+        type=bool,
+        default=True,
     )
     args = parser.parse_args()
     return (
         args.accounts_file,
-        args.transfers_count,
-        args.min_balance,
-        args.transfer_zksync_fee_max
+        args.transfer_percent,
+        args.claim
     )
 
 
@@ -121,7 +120,7 @@ def get_private_keys(addresses):
 
 
 def get_adapter_params(to_address):
-    dst_amount = random.randint(5800000, 620000)
+    dst_amount = random.randint(5800000, 6200000)
     adapter_param3 = encode_packed(["uint16", "uint", "uint"], [2, 10000, dst_amount])
     return '0x' + adapter_param3.hex() + to_address[2:]
 
@@ -209,22 +208,22 @@ def bridge_to_aptos(w3, private_key, network):
         'to_adr': Web3.to_checksum_address(network_erc20_addr[network]['USDC']),
         'spender_adr': APTOS_contract,
     }
-    # approve_contract(w3, private_key, network, aprove_adr_dict, account.address)
-    send_to_aptos(w3, private_key, account.address, amount)
+    approved = approve_contract(w3, private_key, network, aprove_adr_dict, account.address)
+    if approved:
+        send_to_aptos(w3, private_key, account.address, amount)
 
 
 if __name__ == '__main__':
-    file = 'accounts.tsv'
+    file, percent, claim = parse_args()
+    print(file, percent, claim)
     network = 'MATIC'
-    percent = 1
-    claim = True
     with open(file, "r") as f:
         addresses = [row.strip() for row in f]
     keys_list = get_private_keys(addresses)
     w3 = Web3(Web3.HTTPProvider(RPC[network]))
 
-    # for private_key in keys_list:
-    #     bridge_to_aptos(w3, private_key, network)
+    for private_key in keys_list:
+        bridge_to_aptos(w3, private_key, network)
 
     if claim:
         print(f'Claim начнется через {START_CLAIM} минут')
