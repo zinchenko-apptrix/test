@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.db import Base, session
@@ -42,12 +42,15 @@ class PolygonAptosBridge(Base):
         session.commit()
 
     @classmethod
-    def get_by_key_from(cls, key, claimed=False, amount=None):
+    def get_by_polygon_address(cls, address, claimed=False, amount=None):
         if amount:
-            return session.query(cls)\
-                .filter_by(privateKeyPolygon=key, claimed=claimed)\
-                .filter(cls.amount != 0).first()
-        return session.query(cls).filter_by(privateKeyPolygon=key, claimed=claimed).first()
+            return session.query(cls) \
+                .filter(func.lower(cls.addressPolygon) == func.lower(address),
+                        cls.claimed == claimed, cls.amount != 0).first()
+        else:
+            return session.query(cls) \
+                .filter(func.lower(cls.addressPolygon) == func.lower(address),
+                    cls.claimed == claimed).first()
 
 
 class AptosPolygonBridge(Base):

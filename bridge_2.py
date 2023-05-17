@@ -64,9 +64,12 @@ def create_transact(pa_bridge, amount, native_fee, sender_account):
     print(f'{pa_bridge.addressAptos} | SUCCESS txn: {EXPLORER}{txn}')
 
 
-def bridge(key, percent, fee_steps):
+def bridge(address, percent, fee_steps):
     for fee in fee_steps:
-        pa_bridge = PolygonAptosBridge.get_by_key_from(key=key, claimed=True)
+        pa_bridge = PolygonAptosBridge.get_by_polygon_address(address=address, claimed=True)
+        if not pa_bridge:
+            print(f'{address} | Не найден в PolygonAptosBridge')
+            break
         sender_account = Account.load_key(pa_bridge.privateKeyAptos)
         balance_usdc = get_balance(pa_bridge.addressAptos)
         amount = int(int(balance_usdc) * percent / 100)
@@ -93,6 +96,11 @@ if __name__ == '__main__':
     client = RestClient(NODE_URL)
     client.client_config.max_gas_amount = 250
     with open(file, "r") as f:
-        keys_list = [row.strip() for row in f]
-    for private_key in keys_list:
-        bridge(private_key, percent, fee_steps)
+        addresses = [row.strip() for row in f]
+
+    for address in addresses:
+        try:
+            bridge(address, percent, fee_steps)
+        except BaseException as error:
+            print(f'{address} | {error}')
+            break

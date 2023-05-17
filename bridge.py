@@ -8,6 +8,7 @@ from aptos_sdk.account import Account
 from eth_abi.packed import encode_packed
 from web3 import Web3
 
+from database.binance.models import BinanceWithdrawal
 from database.models import PolygonAptosBridge
 
 logger = logging.getLogger('stgstacking')
@@ -124,6 +125,16 @@ def get_token_balance(w3, network, ticker, my_address):
     return balance_wei, balance
 
 
+def get_private_keys(addresses):
+    """Get private keys from BinanceWithdrawal table"""
+    withdrawals = BinanceWithdrawal.get_by_addresses(addresses)
+    if len(withdrawals) != len(addresses):
+        withdrawal_addresses = [w.address for w in withdrawals]
+        lost_addr = [a for a in addresses if a not in withdrawal_addresses]
+        logger.error(f'Не найдены приватные ключи для {lost_addr}')
+    return [w.privateKey for w in withdrawals]
+
+
 def get_adapter_params(to_address):
     adapter_param3 = encode_packed(["uint16", "uint", "uint"], [2, 10000, 5204000])
     return '0x' + adapter_param3.hex() + to_address[2:]
@@ -206,7 +217,8 @@ if __name__ == '__main__':
     network = 'MATIC'
     percent = 1
     with open(file, "r") as f:
-        keys_list = [row.strip() for row in f]
+        addresses = [row.strip() for row in f]
+    keys_list = get_private_keys(addresses)
 
     for private_key in keys_list:
         w3 = Web3(Web3.HTTPProvider(RPC[network]))

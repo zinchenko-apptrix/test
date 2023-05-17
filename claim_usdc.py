@@ -54,14 +54,16 @@ def claim_usdc(db_obj: PolygonAptosBridge):
 
 
 if __name__ == '__main__':
-    file = 'claim_accounts.tsv'
+    file = 'accounts.tsv'
     with open(file, "r") as f:
-        keys_list = [row.strip() for row in f]
+        addresses = [row.strip() for row in f]
+
     client = RestClient(NODE_URL)
     client.client_config.max_gas_amount = 1000
 
-    for private_key in keys_list:
-        db_obj = PolygonAptosBridge.get_by_key_from(key=private_key, amount=True)
+    for address in addresses:
+        db_obj = PolygonAptosBridge.get_by_polygon_address(address=address, amount=True)
         if not db_obj:
+            logger.info(f'{addresses} | не найден в таблице PolygonAptosBridge')
             continue
         claim_usdc(db_obj)
