@@ -10,7 +10,7 @@ EXPLORER = 'https://explorer.aptoslabs.com/txn/'
 USDC_RESOURCE = '0x1::coin::CoinStore<0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::asset::USDC>'
 USDC_MODULE = "0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::asset::USDC"
 BRIDGE_FUNCTION = "0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::coin_bridge::send_coin_from"
-MIN_NATIVE_FEE = 0.04
+MIN_NATIVE_FEE = 4000000
 
 
 def parse_args():
@@ -28,22 +28,15 @@ def parse_args():
         default=100,
     )
     parser.add_argument(
-        '--min-fee',
-        help='Минимальный fee перевода, APT',
-        type=int,
-        default=0.04,
-    )
-    parser.add_argument(
         '--max-fee',
         help='Максимальный fee перевода, APT',
         type=int,
-        default=0.055,
+        default=5500000,
     )
     args = parser.parse_args()
     return (
         args.accounts_file,
         args.transfer_percent,
-        args.min_fee,
         args.max_fee,
     )
 
@@ -62,13 +55,15 @@ def get_balance(address):
         print(f'{address} | на счету нет USDC')
 
 
-def get_fee_steps(min_fee: float, max_fee: float):
-    if min_fee < MIN_NATIVE_FEE:
-        raise ValueError('Минимальная сумма fee - 0.04')
+def get_fee_steps(max_fee: int):
+    if max_fee < MIN_NATIVE_FEE:
+        raise ValueError('Максимальное значение fee должно быть не меньше 4000000')
+    if max_fee == MIN_NATIVE_FEE:
+        return [MIN_NATIVE_FEE]
     return [
-        int(min_fee * 10**8),
-        int((min_fee * 10 ** 8 + max_fee * 10**8) / 2),
-        int(max_fee * 10**8)
+        MIN_NATIVE_FEE,
+        int((MIN_NATIVE_FEE + max_fee) / 2),
+        max_fee
     ]
 
 
@@ -124,9 +119,9 @@ def bridge(address, percent, fee_steps):
 
 
 if __name__ == '__main__':
-    file, percent, min_fee, max_fee = parse_args()
+    file, percent, max_fee = parse_args()
     network = 'MATIC'
-    fee_steps = get_fee_steps(min_fee, max_fee)
+    fee_steps = get_fee_steps(max_fee)
     client = RestClient(NODE_URL)
     client.client_config.max_gas_amount = 250
     with open(file, "r") as f:
