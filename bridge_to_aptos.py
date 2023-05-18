@@ -225,17 +225,20 @@ def send_to_aptos(w3, private_key, my_address, amount, max_fee):
 
 
 def bridge_to_aptos(w3, private_key, network, max_fee):
-    account = w3.eth.account.from_key(private_key)
-    usdc_balance_wei, _ = get_balances(account, max_fee)
-    amount = int(usdc_balance_wei * percent / 100)
-    aprove_adr_dict = {
-        'to_ticker': 'USDC',
-        'to_adr': Web3.to_checksum_address(network_erc20_addr[network]['USDC']),
-        'spender_adr': APTOS_contract,
-    }
-    approved = approve_contract(w3, private_key, network, aprove_adr_dict, account.address)
-    if approved:
-        send_to_aptos(w3, private_key, account.address, amount, max_fee)
+    try:
+        account = w3.eth.account.from_key(private_key)
+        usdc_balance_wei, _ = get_balances(account, max_fee)
+        amount = int(usdc_balance_wei * percent / 100)
+        aprove_adr_dict = {
+            'to_ticker': 'USDC',
+            'to_adr': Web3.to_checksum_address(network_erc20_addr[network]['USDC']),
+            'spender_adr': APTOS_contract,
+        }
+        approved = approve_contract(w3, private_key, network, aprove_adr_dict, account.address)
+        if approved:
+            send_to_aptos(w3, private_key, account.address, amount, max_fee)
+    except BaseException as error:
+        logger.error(f'{private_key} | {error}')
 
 
 if __name__ == '__main__':

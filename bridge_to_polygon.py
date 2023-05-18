@@ -31,7 +31,7 @@ def parse_args():
         '--max-fee',
         help='Максимальный fee перевода, APT',
         type=int,
-        default=5500000,
+        default=4000000,
     )
     args = parser.parse_args()
     return (
@@ -100,7 +100,7 @@ def bridge(address, percent, fee_steps):
     for fee in fee_steps:
         pa_bridge = PolygonAptosBridge.get_by_polygon_address(address=address, claimed=True)
         if not pa_bridge:
-            print(f'{address} | Не найден в PolygonAptosBridge')
+            print(f'{address} | Не найден в PolygonAptosBridge. Либо у аккаунта claimed=False')
             break
         sender_account = Account.load_key(pa_bridge.privateKeyAptos)
         balance_usdc = get_balance(pa_bridge.addressAptos)

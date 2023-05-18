@@ -87,6 +87,6 @@ if __name__ == '__main__':
     for address in addresses:
         db_obj = PolygonAptosBridge.get_by_polygon_address(address=address, amount=True)
         if not db_obj:
-            logger.error(f'{addresses} | не найден в таблице PolygonAptosBridge')
+            logger.error(f'{addresses} | не найден в таблице PolygonAptosBridge. Либо у аккаунта amount=0')
             continue
         claim_usdc(db_obj, logger)
