@@ -71,13 +71,13 @@ def parse_args():
         '--max-fee',
         help='Максимальная комиссия за перевод, WEI',
         type=int,
-        default=150000000000000000,
+        default=1500000000000000000,
     )
     parser.add_argument(
         '--claim',
         help='Делать ли claim токенов на стороне APTOS',
         type=bool,
-        default=True,
+        default=False,
     )
     args = parser.parse_args()
     return (
@@ -149,6 +149,22 @@ def generate_aptos_account(address, key) -> PolygonAptosBridge:
     return db_obj
 
 
+def get_balances(account, max_fee):
+    usdc_balance_wei, _ = get_token_balance(
+        w3, network, 'USDC', account.address
+    )
+    if usdc_balance_wei < 0:
+        logger.error(f'{account.address} | На балансе нет USDC')
+        raise ValueError(f'{account.address} | На балансе нет USDC')
+    matic_balance_wei, _ = get_token_balance(
+        w3, network, 'MATIC', account.address
+    )
+    if max_fee > matic_balance_wei:
+        logger.error(f'{account.address} | Баланс MATIC меньше чем max fee')
+        raise ValueError(f'{account.address} | Баланс MATIC меньше чем max fee')
+    return usdc_balance_wei, matic_balance_wei
+
+
 def approve_contract(w3, private_key, network, adr_dict, my_address):
     try:
         approve_amount = 2 ** 256 - 1
@@ -193,7 +209,7 @@ def send_to_aptos(w3, private_key, my_address, amount, max_fee):
             adapter_params
         ).build_transaction({
             'from': my_address,
-            'value': fee[0],
+            'value': fee,
             'gas': 2000000,
             'gasPrice': w3.eth.gas_price,
             'nonce': w3.eth.get_transaction_count(my_address)
@@ -210,12 +226,7 @@ def send_to_aptos(w3, private_key, my_address, amount, max_fee):
 
 def bridge_to_aptos(w3, private_key, network, max_fee):
     account = w3.eth.account.from_key(private_key)
-    usdc_balance_wei, usdc_balance = get_token_balance(
-        w3, network, 'USDC', account.address
-    )
-    if usdc_balance_wei < 0:
-        logger.error(f'{account.address} | На балансе нет USDC')
-        return
+    usdc_balance_wei, _ = get_balances(account, max_fee)
     amount = int(usdc_balance_wei * percent / 100)
     aprove_adr_dict = {
         'to_ticker': 'USDC',
@@ -245,6 +256,6 @@ if __name__ == '__main__':
         for address in addresses:
             db_obj = PolygonAptosBridge.get_by_polygon_address(address=address, amount=True)
             if not db_obj:
-                logger.info(f'{addresses} | не найден в таблице PolygonAptosBridge')
+                logger.info(f'{addresses} | не найден в таблице PolygonAptosBridge. Либо claim уже выполнен или amount = 0')
                 continue
-            claim_usdc(db_obj)
+            claim_usdc(db_obj, logger)

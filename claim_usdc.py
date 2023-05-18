@@ -1,5 +1,7 @@
 import argparse
+import logging
 import time
+from logging.handlers import RotatingFileHandler
 
 from aptos_sdk.account import Account
 from aptos_sdk.client import RestClient
@@ -21,6 +23,26 @@ PAYLOAD = {
 }
 
 
+def get_logger():
+    logger = logging.getLogger('stgstacking')
+    file_handler = RotatingFileHandler(
+        filename='logs.log',
+        maxBytes=1024 * 1024 * 5,  # 5 MB
+        backupCount=10,
+        encoding='UTF-8',
+    )
+    formatter = logging.Formatter(
+        '%(asctime)s [%(levelname)s] - %(message)s', '%Y-%m-%d %H:%M:%S'
+    )
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+
 def parse_args():
     """Парсинг параметров переданных в терминале в скрипт"""
     parser = argparse.ArgumentParser()
@@ -33,13 +55,13 @@ def parse_args():
     return args.accounts_file
 
 
-def claim_usdc(db_obj: PolygonAptosBridge):
+def claim_usdc(db_obj: PolygonAptosBridge, logger):
     try:
         client = RestClient(NODE_URL)
         client.client_config.max_gas_amount = MAX_GAS
         apt_balance_data = client.account_resource(db_obj.addressAptos, APT_RESOURCE)
         if int(apt_balance_data['data']['coin']['value']) < MIN_APT:
-            print(f'{db_obj.addressAptos} | Недостаточно APT')
+            logger.error(f'{db_obj.addressAptos} | Недостаточно APT')
             return
         account = Account.load_key(db_obj.privateKeyAptos)
         txn = client.submit_transaction(
@@ -51,19 +73,20 @@ def claim_usdc(db_obj: PolygonAptosBridge):
         usdc_balance_data = client.account_resource(db_obj.addressAptos, USDC_RESOURCE)
         usdc_balance = usdc_balance_data['data']['coin']['value']
         db_obj.claim()
-        print(f"{db_obj.addressAptos} | УСПЕШНО claim {usdc_balance} USDC  tx {txn}")
+        logger.info(f"{db_obj.addressAptos} | УСПЕШНО claim {usdc_balance} USDC  tx {txn}")
     except Exception as error:
-        print(f"{db_obj.addressAptos} | НЕ УСПЕШНО claim USDC | {error}")
+        logger.info(f"{db_obj.addressAptos} | НЕ УСПЕШНО claim USDC | {error}")
 
 
 if __name__ == '__main__':
     file = parse_args()
+    logger = get_logger()
     with open(file, "r") as f:
         addresses = [row.strip() for row in f]
 
     for address in addresses:
         db_obj = PolygonAptosBridge.get_by_polygon_address(address=address, amount=True)
         if not db_obj:
-            print(f'{addresses} | не найден в таблице PolygonAptosBridge')
+            logger.error(f'{addresses} | не найден в таблице PolygonAptosBridge')
             continue
-        claim_usdc(db_obj)
+        claim_usdc(db_obj, logger)
