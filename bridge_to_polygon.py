@@ -1,4 +1,6 @@
 import argparse
+import logging
+from logging.handlers import RotatingFileHandler
 
 from aptos_sdk.account import Account
 from aptos_sdk.client import RestClient
@@ -9,8 +11,26 @@ NODE_URL = 'https://fullnode.mainnet.aptoslabs.com/v1'
 EXPLORER = 'https://explorer.aptoslabs.com/txn/'
 USDC_RESOURCE = '0x1::coin::CoinStore<0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::asset::USDC>'
 USDC_MODULE = "0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::asset::USDC"
+APT_RESOURCE = '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>'
 BRIDGE_FUNCTION = "0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::coin_bridge::send_coin_from"
 MIN_NATIVE_FEE = 4000000
+
+logger = logging.getLogger('stgstacking')
+file_handler = RotatingFileHandler(
+    filename='logs_from_aptos_to_polygon.log',
+    maxBytes=1024 * 1024 * 5,  # 5 MB
+    backupCount=10,
+    encoding='UTF-8',
+)
+formatter = logging.Formatter(
+    '%(asctime)s [%(levelname)s] - %(message)s', '%Y-%m-%d %H:%M:%S'
+)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+logger.setLevel(logging.INFO)
 
 
 def parse_args():
@@ -47,17 +67,22 @@ def get_adapter_params():
     return '0x' + adapter_param3.hex()
 
 
-def get_balance(address):
-    try:
-        balance = client.account_resource(address, USDC_RESOURCE)
-        return balance['data']['coin']['value']
-    except KeyError:
-        print(f'{address} | на счету нет USDC')
+def get_usdc_balance(address):
+    balance = client.account_resource(address, USDC_RESOURCE)['data']['coin']['value']
+    if int(balance) == 0:
+        raise ValueError(f'{address} | на счету нет USDC')
+    return balance
+
+
+def check_apt_balance(db_obj, max_fee):
+    apt = client.account_resource(db_obj.addressAptos, APT_RESOURCE)['data']['coin']['value']
+    if int(apt) < max_fee:
+        raise ValueError(f'Недостаточно APT. {apt} < {max_fee}')
 
 
 def get_fee_steps(max_fee: int):
     if max_fee < MIN_NATIVE_FEE:
-        raise ValueError('Максимальное значение fee должно быть не меньше 4000000')
+        raise ValueError(f'Максимальное значение fee должно быть не меньше {MIN_NATIVE_FEE}')
     if max_fee == MIN_NATIVE_FEE:
         return [MIN_NATIVE_FEE]
     return [
@@ -93,29 +118,30 @@ def create_transact(pa_bridge, amount, native_fee, sender_account):
         aptos_txn=txn,
         amount=amount / 10**6,
     )
-    print(f'{pa_bridge.addressAptos} | SUCCESS txn: {EXPLORER}{txn}')
+    logger.info(f'{pa_bridge.addressAptos} | SUCCESS txn: {EXPLORER}{txn}')
 
 
 def bridge(address, percent, fee_steps):
     for fee in fee_steps:
         pa_bridge = PolygonAptosBridge.get_by_polygon_address(address=address, claimed=True)
         if not pa_bridge:
-            print(f'{address} | Не найден в PolygonAptosBridge. Либо у аккаунта claimed=False')
-            break
+            logger.error(f'{address} | Не найден в PolygonAptosBridge. Либо у аккаунта claimed=False')
+            return
+        check_apt_balance(pa_bridge, fee)
         sender_account = Account.load_key(pa_bridge.privateKeyAptos)
-        balance_usdc = get_balance(pa_bridge.addressAptos)
+        balance_usdc = get_usdc_balance(pa_bridge.addressAptos)
         amount = int(int(balance_usdc) * percent / 100)
-        print(f'{pa_bridge.addressAptos} | amount: {amount / 10**6} USDC, fee: {fee / 10**8} APT')
+        logger.info(f'{pa_bridge.addressAptos} | amount: {amount / 10**6} USDC, fee: {fee / 10**8} APT')
         try:
             create_transact(pa_bridge, amount, fee, sender_account)
             return
         except AssertionError as error:
             if "ELAYERZERO_INSUFFICIENT_FEE(0x10000)" not in error.args[0]:
-                print(f'{pa_bridge.addressAptos} | {error}')
-                break
-            print(f'{pa_bridge.addressAptos} | слишком низкое FEE, повышаю')
+                logger.error(f'{pa_bridge.addressAptos} | {error}')
+                return
+            logger.info(f'{pa_bridge.addressAptos} | слишком низкое FEE, повышаю')
     else:
-        print(f'{pa_bridge.addressAptos} | FEE достигла предела')
+        logger.error(f'{pa_bridge.addressAptos} | FEE достигла предела')
 
 
 if __name__ == '__main__':
@@ -131,5 +157,4 @@ if __name__ == '__main__':
         try:
             bridge(address, percent, fee_steps)
         except BaseException as error:
-            print(f'{address} | {error}')
-            break
+            logger.error(f'{address} | {error}')

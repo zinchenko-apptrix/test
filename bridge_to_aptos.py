@@ -15,7 +15,7 @@ from database.models import PolygonAptosBridge
 
 logger = logging.getLogger('stgstacking')
 file_handler = RotatingFileHandler(
-    filename='logs.log',
+    filename='logs_from_polygon_to_aptos.log',
     maxBytes=1024 * 1024 * 5,  # 5 MB
     backupCount=10,
     encoding='UTF-8',

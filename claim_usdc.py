@@ -26,7 +26,7 @@ PAYLOAD = {
 def get_logger():
     logger = logging.getLogger('stgstacking')
     file_handler = RotatingFileHandler(
-        filename='logs.log',
+        filename='claim_logs.log',
         maxBytes=1024 * 1024 * 5,  # 5 MB
         backupCount=10,
         encoding='UTF-8',
