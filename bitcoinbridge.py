@@ -73,31 +73,31 @@ def parse_args():
     parser.add_argument(
         '--src',
         help='Сеть источник',
-        default='AVALANCHE',
+        default='POLYGON',
     )
     parser.add_argument(
         '--min-amount-percent',
         help='Минимальное количество BTC, %',
         type=int,
-        default=50,
+        default=10,
     )
     parser.add_argument(
         '--max-amount-percent',
         help='Максимальное количество BTC, %',
         type=int,
-        default=55,
+        default=20,
     )
     parser.add_argument(
         '--max-gas-price',
         help='Максимальная стоимость газа',
         type=int,
-        default=39795261241,
+        default=100000000000000000000,
     )
     parser.add_argument(
         '--max-fee',
         help='Максимальная комиссия перевода',
         type=int,
-        default=39795261241000000000,
+        default=100000000000000000000,
     )
     parser.add_argument(
         '--min-delay',
