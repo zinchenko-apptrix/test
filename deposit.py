@@ -16,7 +16,10 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from starknet_py.hash.address import compute_address
 from starknet_py.net.gateway_client import GatewayClient
 from starknet_py.net.models import StarknetChainId
-from starknet_py.net.networks import TESTNET, MAINNET
+from starknet_py.net.networks import (
+    TESTNET as TESTNET_CLIENT,
+    MAINNET as MAINNET_CLIENT,
+)
 from starknet_py.net.signer.stark_curve_signer import KeyPair
 from web3 import Web3
 from web3.middleware import construct_sign_and_send_raw_middleware, \
@@ -27,15 +30,15 @@ from services import FireFoxCreator, ProxyAgent, AccountParser
 
 PASSWORD = 'getfromenvfile'
 ETH_RPC = os.getenv('ETH_RPC', 'https://eth.llamarpc.com')
-PRODUCTION = os.getenv('PRODUCTION', True)
+TESTNET = os.getenv('TESTNET', False)
 CONTRACT_ADDRESS = '0xc3511006C04EF1d78af4C8E0e74Ec18A6E64Ff9e'
 CONTRACT_ABI = 'starknet_bridge.json'
 CLASS_HASH_PROXY = 0x025ec026985a3bf9d0cc1fe17326b245dfdc3ff89b8fde106542a3ea56c5a918
 CLASS_HASH_ACCOUNT = 0x033434ad846cdd5f23eb73ff09fe6fddd568284a0fb7d1be20ee482f044dabe2
 IMPLEMENT_FUNC = 215307247182100370520050591091822763712463273430149262739280891880522753123
 DEPLOY_DELAY = 10
-CLIENT = MAINNET if PRODUCTION else TESTNET
-CHAIN = StarknetChainId.MAINNET if PRODUCTION else StarknetChainId.TESTNET
+CLIENT = TESTNET_CLIENT if TESTNET else MAINNET_CLIENT
+CHAIN = StarknetChainId.TESTNET if TESTNET else StarknetChainId.MAINNET
 
 
 logger = logging.getLogger('starknet')
@@ -95,7 +98,7 @@ def parse_args():
     parser.add_argument(
         '--max-fee-deploy',
         help='Максимальная комиссия за деплой аккаунта starknet, wei',
-        default=1000000000000000,
+        default=2000000000000000,
         type=int,
     )
     parser.add_argument(
@@ -186,11 +189,15 @@ class StarkWallet:
             By.XPATH, "//button[contains(text(), 'Create account')]").click()
         self.driver.find_element(
             By.XPATH, "//button[@aria-label='Standard Account']").click()
+        self.driver.find_element(
+            By.XPATH, "//*[contains(text(), 'Account 1')]").click()
 
     def _save_secret_phrase(self):
         logger.info('Saving phrase')
-        self.driver.find_element(
-            By.XPATH, value=f"//*[contains(text(),'Set up account')]").click()
+        sleep(self.SLEEP)
+        index = 1 if TESTNET else 0
+        self.driver.find_elements(
+            By.XPATH, value=f"//*[contains(text(),'Set up account')]")[index].click()
         self.driver.find_element(
             By.XPATH, value=f"//*[contains(text(),'Save the recovery')]").click()
         sleep(self.WAIT_PHRASE)
@@ -205,10 +212,9 @@ class StarkWallet:
         self.driver.find_element(
             By.XPATH, value=f"//*[contains(text(),'Yes')]").click()
         sleep(self.MICRO_SLEEP)
-        self.driver.find_element(
-            By.XPATH, value=f"//*[contains(text(),'Yes')]").click()
-        self.driver.find_element(
-            By.XPATH, value=f"//*[contains(text(),'Account 1')]").click()
+        if TESTNET:
+            self.driver.find_element(
+                By.XPATH, value=f"//*[contains(text(),'Yes')]").click()
         return ' '.join(words)
 
     def _get_private_key(self):
@@ -229,14 +235,13 @@ class StarkWallet:
         ).text
 
     def _open_private_key_block(self):
-        for _ in range(2):
-            self.driver.find_element(
-                By.XPATH, "//button[@aria-label='Show settings']").click()
-            button = self.driver.find_element(
-                By.XPATH, "//button[@aria-label='Select Account 1']")
-            sleep(self.MICRO_SLEEP)
-            self.driver.execute_script("arguments[0].click();", button)
-            sleep(self.MICRO_SLEEP)
+        self.driver.find_element(
+            By.XPATH, "//button[@aria-label='Show settings']").click()
+        button = self.driver.find_element(
+            By.XPATH, "//button[@aria-label='Select Account 1']")
+        sleep(self.MICRO_SLEEP)
+        self.driver.execute_script("arguments[0].click();", button)
+        sleep(self.MICRO_SLEEP)
 
     def save_db(self, phrase, key, address):
         StarknetAccountDeploy.create(
@@ -253,7 +258,8 @@ class StarkWallet:
         )
         self._create_wallet()
         self.driver.get(extension_url)
-        self._switch_to_testnet()
+        if TESTNET:
+            self._switch_to_testnet()
         phrase = self._save_secret_phrase()
         key = self._get_private_key()
         address = get_wallet_address(key)
@@ -312,7 +318,7 @@ class Bridge:
         raise ValueError(f'Gas limit is more than desired: {gas}')
 
     def get_gas_price(self) -> int:
-        gas_price = self.w3.eth.gas_price
+        gas_price = int(self.w3.eth.gas_price * 1.03)
         if gas_price <= self.max_gas_price:
             return gas_price
         raise ValueError(f'GasPrice is more than desired: {gas_price}')
@@ -396,24 +402,27 @@ def main(
     proxy = proxy_agent.get_proxy(eth_address)
     proxy_agent.reset_proxy()
     driver = FireFoxCreator(proxy).driver
-    cr = StarkWallet(driver)
-    stark_key, address = cr.create_wallet()
+    try:
+        cr = StarkWallet(driver)
+        stark_key, address = cr.create_wallet()
 
-    proxy_agent.rotate(eth_address)
-    bridge = Bridge(
-        recipient_address=address,
-        sender_key=eth_key,
-        rpc=ETH_RPC,
-        max_gas_limit=max_gas_limit,
-        max_gas_price=max_gas_price,
-    )
-    bridge.send_eth(amount_percent)
+        proxy_agent.rotate(eth_address)
+        bridge = Bridge(
+            recipient_address=address,
+            sender_key=eth_key,
+            rpc=ETH_RPC,
+            max_gas_limit=max_gas_limit,
+            max_gas_price=max_gas_price,
+        )
+        bridge.send_eth(amount_percent)
 
-    threading.Timer(
-        DEPLOY_DELAY * 60,
-        deploy_stark_account,
-        args=(address, stark_key, max_fee_deploy)
-    ).start()
+        threading.Timer(
+            DEPLOY_DELAY * 60,
+            deploy_stark_account,
+            args=(address, stark_key, max_fee_deploy)
+        ).start()
+    finally:
+        driver.quit()
 
 
 if __name__ == '__main__':
