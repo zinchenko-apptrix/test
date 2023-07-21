@@ -1,62 +1,40 @@
 import argparse
 import json
-import logging
 import os
 import threading
 import traceback
-from logging.handlers import RotatingFileHandler
 from random import randint, uniform
 from time import sleep
-from typing import Dict, List
+from typing import Dict
 
 from eth_account import Account
-from starknet_py.net.account.account import Account as StarkAccount
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from starknet_py.hash.address import compute_address
-from starknet_py.net.gateway_client import GatewayClient
-from starknet_py.net.models import StarknetChainId
-from starknet_py.net.networks import (
-    TESTNET as TESTNET_CLIENT,
-    MAINNET as MAINNET_CLIENT,
-)
 from starknet_py.net.signer.stark_curve_signer import KeyPair
 from web3 import Web3
-from web3.middleware import construct_sign_and_send_raw_middleware, \
-    geth_poa_middleware
-
+from web3.middleware import (
+    construct_sign_and_send_raw_middleware,
+    geth_poa_middleware,
+)
 from database.models import StarknetAccountDeploy
-from services import FireFoxCreator, ProxyAgent, AccountParser
+from deploy import deploy_stark_account
+from services import (
+    FireFoxCreator,
+    ProxyAgent,
+    AccountParser,
+    CLASS_HASH_ACCOUNT,
+    IMPLEMENT_FUNC,
+    CLASS_HASH_PROXY,
+    TESTNET,
+    logger,
+)
 
 PASSWORD = 'getfromenvfile'
 ETH_RPC = os.getenv('ETH_RPC', 'https://eth.llamarpc.com')
-TESTNET = os.getenv('TESTNET', False)
 CONTRACT_ADDRESS = '0xc3511006C04EF1d78af4C8E0e74Ec18A6E64Ff9e'
 CONTRACT_ABI = 'starknet_bridge.json'
-CLASS_HASH_PROXY = 0x025ec026985a3bf9d0cc1fe17326b245dfdc3ff89b8fde106542a3ea56c5a918
-CLASS_HASH_ACCOUNT = 0x033434ad846cdd5f23eb73ff09fe6fddd568284a0fb7d1be20ee482f044dabe2
-IMPLEMENT_FUNC = 215307247182100370520050591091822763712463273430149262739280891880522753123
-DEPLOY_DELAY = 10
-CLIENT = TESTNET_CLIENT if TESTNET else MAINNET_CLIENT
-CHAIN = StarknetChainId.TESTNET if TESTNET else StarknetChainId.MAINNET
-
-
-logger = logging.getLogger('starknet')
-file_handler = RotatingFileHandler(
-    filename='starknet.log',
-    maxBytes=1024 * 1024 * 5,  # 5 MB
-    backupCount=3,
-    encoding='UTF-8',
-)
-formatter = logging.Formatter(
-    '%(asctime)s [%(levelname)s] - %(message)s', '%Y-%m-%d %H:%M:%S'
-)
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-logger.setLevel(logging.INFO)
+DEPLOY_DELAY = 5
 
 
 def parse_args():
@@ -337,57 +315,6 @@ class Bridge:
         self.w3.eth.wait_for_transaction_receipt(txn_hash, timeout=240)
         self.save_db(amount / 10 ** 18)
         logger.info(f'{self.sender.address} || sent {amount / 10**18} ETH')
-
-
-class Deployer:
-    def __init__(self, address: int, private_key: int, max_fee: int):
-        self.address = address
-        self.max_fee = max_fee
-        self.key_pair = KeyPair.from_private_key(private_key)
-
-    def deploy(self):
-        logger.info(f'{self.address} Deploying account')
-        call_data = self.get_call_data()
-        result = StarkAccount.deploy_account_sync(
-            address=self.address,
-            class_hash=CLASS_HASH_PROXY,
-            salt=self.key_pair.public_key,
-            key_pair=self.key_pair,
-            client=GatewayClient(CLIENT),
-            chain=CHAIN,
-            constructor_calldata=call_data,
-            max_fee=self.max_fee,
-        )
-        result.wait_for_acceptance_sync()
-        logger.info(f'{self.address} || Account deployed')
-        self.save_db()
-
-    def save_db(self):
-        StarknetAccountDeploy.update(
-            address_stark=hex(self.address),
-            deployed=True
-        )
-
-    def get_call_data(self) -> List:
-        return [
-            int(CLASS_HASH_ACCOUNT),
-            IMPLEMENT_FUNC,
-            2,
-            self.key_pair.public_key,
-            0,
-        ]
-
-
-def deploy_stark_account(address: str, stark_key: str, max_fee_deploy: int):
-    try:
-        deployer = Deployer(
-            address=int(address, 16),
-            private_key=int(stark_key, 16),
-            max_fee=max_fee_deploy
-        )
-        deployer.deploy()
-    except BaseException as error:
-        logger.error(f'{address} deploy error: {error}')
 
 
 def main(

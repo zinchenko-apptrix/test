@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, update
+from sqlalchemy import DateTime, update, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.db import Base, session
@@ -18,7 +18,7 @@ class StarknetAccountDeploy(Base):
     creationDate = mapped_column(DateTime, default=datetime.utcnow)
 
     def __repr__(self):
-        return f"Деплой Starknet аккаунта {self.address}"
+        return f"Деплой Starknet аккаунта {self.addressStark}"
 
     @classmethod
     def create(cls, **kwargs):
@@ -33,3 +33,12 @@ class StarknetAccountDeploy(Base):
         query = query.values(**kwargs)
         session.execute(query)
         session.commit()
+
+    @classmethod
+    def get_not_deployed(cls):
+        query = select(cls).filter(
+            cls.amount > 0,
+            cls.deployed == False,
+        ).distinct(cls.addressStark)
+        result = session.execute(query).scalars().all()
+        return result

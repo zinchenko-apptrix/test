@@ -1,16 +1,46 @@
 import csv
 import logging
 import os
+from logging.handlers import RotatingFileHandler
 from random import choice
 
 import requests
 from selenium.webdriver.firefox.options import Options
 from seleniumwire.webdriver import Firefox
 from web3 import Web3
-
+from starknet_py.net.models import StarknetChainId
+from starknet_py.net.networks import (
+    TESTNET as TESTNET_CLIENT,
+    MAINNET as MAINNET_CLIENT,
+)
 from database.other.models import ZkSyncProxyLog, BinanceWithdrawal
 
 logger = logging.getLogger('starknet')
+
+
+CLASS_HASH_PROXY = 0x025ec026985a3bf9d0cc1fe17326b245dfdc3ff89b8fde106542a3ea56c5a918
+CLASS_HASH_ACCOUNT = 0x033434ad846cdd5f23eb73ff09fe6fddd568284a0fb7d1be20ee482f044dabe2
+IMPLEMENT_FUNC = 215307247182100370520050591091822763712463273430149262739280891880522753123
+TESTNET = os.getenv('TESTNET', False)
+CLIENT = TESTNET_CLIENT if TESTNET else MAINNET_CLIENT
+CHAIN = StarknetChainId.TESTNET if TESTNET else StarknetChainId.MAINNET
+
+logger = logging.getLogger('starknet')
+file_handler = RotatingFileHandler(
+    filename='starknet.log',
+    maxBytes=1024 * 1024 * 5,  # 5 MB
+    backupCount=3,
+    encoding='UTF-8',
+)
+formatter = logging.Formatter(
+    '%(asctime)s [%(levelname)s] - %(message)s', '%Y-%m-%d %H:%M:%S'
+)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+logger.setLevel(logging.INFO)
 
 
 class FireFoxCreator:
