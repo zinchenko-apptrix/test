@@ -358,12 +358,13 @@ if __name__ == '__main__':
     parser = AccountParser(accounts_file, ETH_RPC)
     wallets = parser.get_addresses_from_file()
 
-    for addr, key, eth_min, eth_max in wallets:
+    while wallets:
+        wallet = wallets[0]
         try:
-            amount = uniform(float(eth_min), float(eth_max))
+            amount = uniform(wallet.eth_min, wallet.eth_max)
             main(
-                addr,
-                key,
+                wallet.address,
+                wallet.private_key,
                 amount,
                 max_gas_limit,
                 max_gas_price,
@@ -371,6 +372,10 @@ if __name__ == '__main__':
                 proxy_agent
             )
             sleep(randint(min_delay, max_delay))
+            wallets.remove(wallet)
         except BaseException as error:
             logger.error(traceback.format_exc())
-            logger.error(f'{addr} || Error: {error}')
+            logger.error(f'{wallet.address} || Error: {error}')
+            wallet.reduce(wallets)
+            if wallet.retries > 0:
+                sleep(60)

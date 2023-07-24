@@ -110,7 +110,7 @@ if __name__ == '__main__':
     proxy_agent = ProxyAgent(proxies_file)
     accounts = StarknetAccountDeploy.get_not_deployed()
     for acc in accounts:
-        proxy_agent.rotate(acc.addressETH)
+        proxy_agent.rotate(acc.addressStark)
         result = deploy_stark_account(
             acc.addressStark,
             acc.privateKey,

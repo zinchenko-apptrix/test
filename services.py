@@ -1,6 +1,7 @@
 import csv
 import logging
 import os
+from dataclasses import dataclass
 from logging.handlers import RotatingFileHandler
 from random import choice
 
@@ -68,6 +69,22 @@ class FireFoxCreator:
         self.driver.implicitly_wait(15)
 
 
+class Wallet:
+
+    def __init__(self, address, private_key, eth_min, eth_max, retries=5):
+        self.address = address
+        self.private_key = private_key
+        self.eth_min = float(eth_min)
+        self.eth_max = float(eth_max)
+        self.retries = retries
+
+    def reduce(self, wallets):
+        self.retries -= 1
+        if self.retries <= 0:
+            wallets.remove(self)
+        logger.warning(f'{self.address} || Retries left: {self.retries}')
+
+
 class AccountParser:
     def __init__(self, file_path: str, rpc):
         self.table = BinanceWithdrawal
@@ -82,7 +99,10 @@ class AccountParser:
             reader = csv.reader(f, delimiter='\t')
             lines = [a for a in reader]
         if len(lines[0]) > 1:
-            accounts = [(a[0], a[1], a[2], a[3]) for a in lines if a[4] == 'Starknet']
+            accounts = [
+                Wallet(a[0], a[1], a[2], a[3]) for a in lines
+                if a[4] == 'Starknet'
+            ]
             return accounts
 
     def validate_file(self):
