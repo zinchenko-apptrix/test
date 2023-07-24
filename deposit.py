@@ -27,7 +27,7 @@ from services import (
     IMPLEMENT_FUNC,
     CLASS_HASH_PROXY,
     TESTNET,
-    logger,
+    logger, eth_to_wei, wei_to_eth,
 )
 
 PASSWORD = 'getfromenvfile'
@@ -51,18 +51,6 @@ def parse_args():
     parser.add_argument(
         '--proxies-file',
         help='Текстовый файл с прокси',
-    )
-    parser.add_argument(
-        '--min-amount-swap',
-        help='Минимальная сумма свапа в %',
-        default=1,
-        type=float,
-    )
-    parser.add_argument(
-        '--max-amount-swap',
-        help='Максимальная сумма свапа в %',
-        default=1.5,
-        type=float,
     )
     parser.add_argument(
         '--max-gas-limit',
@@ -98,8 +86,6 @@ def parse_args():
     return (
         args.accounts_file,
         args.proxies_file,
-        args.min_amount_swap,
-        args.max_amount_swap,
         args.max_gas_limit,
         args.max_gas_price,
         args.max_fee_deploy,
@@ -311,23 +297,22 @@ class Bridge:
             addressETH=self.sender.address,
         )
 
-    def send_eth(self, amount_percent: float):
+    def send_eth(self, amount: int):
         logger.info(f'{self.sender.address} || depositing')
-        amount = self.get_amount(amount_percent)
         txn = self.contract.functions.deposit(
             amount - 1,
             int(self.recipient, 16)
         )
         txn_hash = self._transact(txn, amount)
         self.w3.eth.wait_for_transaction_receipt(txn_hash, timeout=240)
-        self.save_db(amount / 10 ** 18)
-        logger.info(f'{self.sender.address} || sent {amount / 10**18} ETH')
+        self.save_db(wei_to_eth(amount))
+        logger.info(f'{self.sender.address} || sent {wei_to_eth(amount)} ETH')
 
 
 def main(
     eth_address,
     eth_key,
-    amount_percent,
+    amount_eth,
     max_gas_limit,
     max_gas_price,
     max_fee_deploy,
@@ -348,7 +333,7 @@ def main(
             max_gas_limit=max_gas_limit,
             max_gas_price=max_gas_price,
         )
-        bridge.send_eth(amount_percent)
+        bridge.send_eth(eth_to_wei(amount_eth))
 
         threading.Timer(
             DEPLOY_DELAY * 60,
@@ -363,8 +348,6 @@ if __name__ == '__main__':
     (
         accounts_file,
         proxies_file,
-        min_amount_swap,
-        max_amount_swap,
         max_gas_limit,
         max_gas_price,
         max_fee_deploy,
@@ -373,15 +356,15 @@ if __name__ == '__main__':
     ) = parse_args()
     proxy_agent = ProxyAgent(proxies_file)
     parser = AccountParser(accounts_file, ETH_RPC)
-    wallets = parser.get_private_keys()
+    wallets = parser.get_addresses_from_file()
 
-    for addr, key in wallets:
+    for addr, key, eth_min, eth_max in wallets:
         try:
-            amount_percent = uniform(min_amount_swap, max_amount_swap)
+            amount = uniform(float(eth_min), float(eth_max))
             main(
                 addr,
                 key,
-                amount_percent,
+                amount,
                 max_gas_limit,
                 max_gas_price,
                 max_fee_deploy,

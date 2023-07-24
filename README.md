@@ -54,13 +54,9 @@ __Необходимо создать .env файл со следующими к
 
 __Передаваемые аргументы:__
 
-    --accounts-file - Путь до tsv файла c аккаунтами. Либо только адреса, либо адреса с ключами
+    --accounts-file - Путь до tsv файла c аккаунтами. 1. Адрес.  2. Приватник.  3. Минимум перевод ETH.  4. Максимум перевода ETH. 5. Starknet.
 
-    --proxies-file - Путь до текстового файла с прокси (необязательный параметр). Формат - host:port:user:pass 
-
-    --min-amount-swap - Минимальная сумма свапа в % от баланса
-
-    --max-amount-swap - Максимальная сумма свапа в % от баланса
+    --proxies-file - Путь до текстового файла с прокси (необязательный параметр). Формат - host:port:user:pass
 
     --max-gas-limit   - Максимальное количество газа за транзакцию бриджа, WEI
 
@@ -74,7 +70,7 @@ __Передаваемые аргументы:__
 
     
 Пример запуска:
-`python deposit.py --accounts-file accs.tsv --proxies-file proxies.txt --min-amount-swap 90 --max-amount-swap 100 --max-gas-limit 1000000000000 --max-gas-price 2000000000000 --max-fee-deploy 100000000000000 --min-delay 1 --max-delay 3`
+`python deposit.py --accounts-file accs.tsv --proxies-file proxies.txt --max-gas-limit 1000000000000 --max-gas-price 2000000000000 --max-fee-deploy 100000000000000 --min-delay 1 --max-delay 3`
 
 
 ## Запуск deploy.py

@@ -69,9 +69,6 @@ class FireFoxCreator:
 
 
 class AccountParser:
-    """
-    Парсинг приватных ключей из таблицы ZkSyncLiteBridge
-    """
     def __init__(self, file_path: str, rpc):
         self.table = BinanceWithdrawal
         self.file_path = file_path
@@ -79,39 +76,14 @@ class AccountParser:
         self.w3 = Web3(Web3.HTTPProvider(endpoint_uri=rpc))
         self.addresses = self.get_addresses_from_file()
 
-    def get_private_keys(self):
-        """Get private keys from BinanceWithdrawal table"""
-        if self.private_keys is not None:
-            return self.private_keys
-        accounts = self.table.get_by_addresses(self.addresses)
-        if len(accounts) != len(self.addresses):
-            withdrawal_addresses = [w.address for w in accounts]
-            lost_addr = [a for a in self.addresses if a not in withdrawal_addresses]
-            logger.error(f'Не найдены приватные ключи для {lost_addr}')
-        return [(a.address, a.privateKey) for a in accounts if self.check_private_key(a)]
-
-    def check_private_key(self, obj: BinanceWithdrawal):
-        try:
-            acc = self.w3.eth.account.from_key(obj.privateKey)
-            if acc.address.lower() == obj.address.lower():
-                return True
-            logger.error(f'Неверный приватный ключ для {obj.address}')
-        except Exception as e:
-            logger.error(f'{e} {obj.address}')
-
     def get_addresses_from_file(self):
         self.validate_file()
         with open(self.file_path) as f:
             reader = csv.reader(f, delimiter='\t')
             lines = [a for a in reader]
         if len(lines[0]) > 1:
-            self.private_keys = [
-                (a[0], a[1]) for a in lines
-                if self.check_private_key(
-                    self.table(address=a[0], privateKey=a[1])
-                )
-            ]
-        return [a[0] for a in lines]
+            accounts = [(a[0], a[1], a[2], a[3]) for a in lines if a[4] == 'Starknet']
+            return accounts
 
     def validate_file(self):
         f = self.file_path
@@ -180,3 +152,11 @@ class ProxyAgent:
     def reset_proxy():
         os.environ['HTTPS_PROXY'] = ''
         os.environ['HTTP_PROXY'] = ''
+
+
+def eth_to_wei(amount):
+    return int(amount * 10**18)
+
+
+def wei_to_eth(amount):
+    return amount / 10**18
