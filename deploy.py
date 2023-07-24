@@ -14,6 +14,7 @@ from services import (
     CLASS_HASH_ACCOUNT,
     IMPLEMENT_FUNC,
     logger,
+    ProxyAgent,
 )
 from starknet_py.net.account.account import Account as StarkAccount
 
@@ -21,6 +22,10 @@ from starknet_py.net.account.account import Account as StarkAccount
 def parse_args():
     """Парсинг параметров переданных в терминале в скрипт"""
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--proxies-file',
+        help='Текстовый файл с прокси',
+    )
     parser.add_argument(
         '--max-fee-deploy',
         help='Максимальная комиссия за деплой аккаунта starknet, wei',
@@ -41,6 +46,7 @@ def parse_args():
     )
     args = parser.parse_args()
     return (
+        args.proxies_file,
         args.max_fee_deploy,
         args.min_delay,
         args.max_delay,
@@ -100,9 +106,11 @@ def deploy_stark_account(address: str, stark_key: str, max_fee_deploy: int):
 
 
 if __name__ == '__main__':
-    max_fee_deploy, min_delay, max_delay = parse_args()
+    proxies_file, max_fee_deploy, min_delay, max_delay = parse_args()
+    proxy_agent = ProxyAgent(proxies_file)
     accounts = StarknetAccountDeploy.get_not_deployed()
     for acc in accounts:
+        proxy_agent.rotate(acc.addressETH)
         result = deploy_stark_account(
             acc.addressStark,
             acc.privateKey,

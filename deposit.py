@@ -32,9 +32,12 @@ from services import (
 
 PASSWORD = 'getfromenvfile'
 ETH_RPC = os.getenv('ETH_RPC', 'https://eth.llamarpc.com')
-CONTRACT_ADDRESS = '0xc3511006C04EF1d78af4C8E0e74Ec18A6E64Ff9e'
+if TESTNET:
+    CONTRACT_ADDRESS = '0xc3511006C04EF1d78af4C8E0e74Ec18A6E64Ff9e'
+else:
+    CONTRACT_ADDRESS = '0xae0Ee0A63A2cE6BaeEFFE56e7714FB4EFE48D419'
 CONTRACT_ABI = 'starknet_bridge.json'
-DEPLOY_DELAY = 5
+DEPLOY_DELAY = 10
 
 
 def parse_args():
@@ -52,13 +55,13 @@ def parse_args():
     parser.add_argument(
         '--min-amount-swap',
         help='Минимальная сумма свапа в %',
-        default=0.1,
+        default=1,
         type=float,
     )
     parser.add_argument(
         '--max-amount-swap',
         help='Максимальная сумма свапа в %',
-        default=0.2,
+        default=1.5,
         type=float,
     )
     parser.add_argument(
@@ -76,7 +79,7 @@ def parse_args():
     parser.add_argument(
         '--max-fee-deploy',
         help='Максимальная комиссия за деплой аккаунта starknet, wei',
-        default=2000000000000000,
+        default=1000000000000000,
         type=int,
     )
     parser.add_argument(
@@ -296,13 +299,17 @@ class Bridge:
         raise ValueError(f'Gas limit is more than desired: {gas}')
 
     def get_gas_price(self) -> int:
-        gas_price = int(self.w3.eth.gas_price * 1.03)
+        gas_price = int(self.w3.eth.gas_price * 1.05)
         if gas_price <= self.max_gas_price:
             return gas_price
         raise ValueError(f'GasPrice is more than desired: {gas_price}')
 
     def save_db(self, amount):
-        StarknetAccountDeploy.update(self.recipient, amount=amount)
+        StarknetAccountDeploy.update(
+            self.recipient,
+            amount=amount,
+            addressETH=self.sender.address,
+        )
 
     def send_eth(self, amount_percent: float):
         logger.info(f'{self.sender.address} || depositing')
