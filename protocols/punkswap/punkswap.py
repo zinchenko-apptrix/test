@@ -14,6 +14,8 @@ from settings.config import PROJECT_DIR, MAIN_RPC
 class PunkSwapExchanger(GeckoExchanger):
     POOLS = {
         'USDCETH': '0x6562e87944e4d6ccf9839c662db32e6b19f72cde',
+        'USDTETH': '0xb12abb5bcb50c2aa6f1b54447046640010b33933',
+        'USDCUSDT': '0x2307dbafed1464605e5cfc7fbc7ae761aa527f45',
     }
 
 
@@ -38,20 +40,27 @@ class PunkSwap(SwapBase[SwapTransaction]):
 
     def _get_txn(self, amount: Wei) -> tuple[ContractFunctions, int]:
         dst_amount = self._get_min_dst(amount)
+        common_params = [
+            [self.src_token.address, self.dst_token.address],
+            self.account.address,
+            get_timestamp(),
+        ]
         if self.src_token.name == 'ETH':
             tx = self.router.functions.swapExactETHForTokens(
                 dst_amount,
-                [self.src_token.address, self.dst_token.address],
-                self.account.address,
-                get_timestamp(),
+                *common_params,
+            )
+        elif self.src_token.erc20 and self.dst_token.erc20:
+            tx = self.router.functions.swapExactTokensForTokens(
+                amount,
+                dst_amount,
+                *common_params,
             )
         else:
             tx = self.router.functions.swapExactTokensForETH(
                 amount,
                 dst_amount,
-                [self.src_token.address, self.dst_token.address],
-                self.account.address,
-                get_timestamp(),
+                *common_params,
             )
         return tx, dst_amount
 

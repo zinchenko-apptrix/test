@@ -137,7 +137,7 @@ def parse_args():
     )
     parser.add_argument(
         '--max-gas-price',
-        help='Максимальная стоимость газа в сети LINEA wei',
+        help='Максимальная стоимость газа в сети SCROLL wei',
         default=2000000000000,
         type=int,
     )
