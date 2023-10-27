@@ -8,6 +8,10 @@ from settings.config import PROJECT_DIR, MAIN_RPC
 
 ABI_PATH = os.path.join(PROJECT_DIR, 'settings/contracts/abi')
 
+
+WETH = '0x5300000000000000000000000000000000000004'
+
+
 TOKENS = {
     'USDC': {
         'address': '0x06eFdBFf2a14a7c8E15944D1F4A48F9F95F663A4',
@@ -25,8 +29,6 @@ TOKENS = {
         'abi': os.path.join(ABI_PATH, 'erc20.json')
     },
 }
-
-WETH = '0x5300000000000000000000000000000000000004'
 
 
 class CoinGecko:

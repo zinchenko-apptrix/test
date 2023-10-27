@@ -10,18 +10,16 @@ from services.utils import get_timestamp
 from settings.config import PROJECT_DIR, MAIN_RPC
 
 
-class PunkSwapExchanger(GeckoExchanger):
+class ScrollSwapExchanger(GeckoExchanger):
     POOLS = {
-        'USDCETH': '0x6562e87944e4d6ccf9839c662db32e6b19f72cde',
-        'USDTETH': '0xb12abb5bcb50c2aa6f1b54447046640010b33933',
-        'USDCUSDT': '0x2307dbafed1464605e5cfc7fbc7ae761aa527f45',
+        'USDTETH': '0xe3c46d28c23007b0bff7bb58471c81312c0a8690',
     }
 
 
-class PunkSwap(SwapBase[SwapTransaction]):
-    CONTRACT = '0x26cB8660EeFCB2F7652e7796ed713c9fB8373f8e'
+class ScrollSwap(SwapBase[SwapTransaction]):
+    CONTRACT = '0xEfEb222F8046aAa032C56290416C3192111C0085'
     ABI = f'{PROJECT_DIR}/protocols/punkswap/router.json'
-    exchanger = PunkSwapExchanger
+    exchanger = ScrollSwapExchanger
 
     def _get_txn(self, amount: Wei) -> tuple[ContractFunctions, int]:
         dst_amount = self._get_min_dst(amount)
@@ -35,12 +33,6 @@ class PunkSwap(SwapBase[SwapTransaction]):
                 dst_amount,
                 *common_params,
             )
-        elif self.src_token.erc20 and self.dst_token.erc20:
-            tx = self.router.functions.swapExactTokensForTokens(
-                amount,
-                dst_amount,
-                *common_params,
-            )
         else:
             tx = self.router.functions.swapExactTokensForETH(
                 amount,
@@ -50,23 +42,23 @@ class PunkSwap(SwapBase[SwapTransaction]):
         return tx, dst_amount
 
 
-class PunkSwapAgent(SwapAgentBase[PunkSwap]):
-    TOKENS = ['ETH', 'USDC', 'USDT']
-    SWAP_CLASS = PunkSwap
+class ScrollSwapAgent(SwapAgentBase[ScrollSwap]):
+    TOKENS = ['ETH', 'USDT']
+    SWAP_CLASS = ScrollSwap
 
     def _swap(self, txn, value: Wei, *args, **kwargs):
         return self._txn_agent.transact(txn, value)
 
     @property
     def name(self):
-        return 'PunkSwap'
+        return 'ScrollSwap'
 
 
 if __name__ == '__main__':
     account = Account.from_key('')
     src_token = TokenCreator.get('ETH', MAIN_RPC)
-    dst_token = TokenCreator.get('USDC', MAIN_RPC)
-    swaper = PunkSwap(
+    dst_token = TokenCreator.get('USDT', MAIN_RPC)
+    swaper = ScrollSwap(
         account=account,
         src_token=src_token,
         dst_token=dst_token,

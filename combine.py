@@ -37,13 +37,13 @@ def parse_args():
         '--tokens',
         help='Участвующие токены, через запятую (USDC,USDT,ETH)',
         type=str,
-        default='ETH,USDC',
+        default='ETH,USDT',
     )
     parser.add_argument(
         '--protocols',
         help='Участвующие протоколы, через запятую (KyberSwap,SyncSwap)',
         type=str,
-        default='PunkSwap',
+        default='ScrollSwap',
     )
     parser.add_argument(
         '--unique',

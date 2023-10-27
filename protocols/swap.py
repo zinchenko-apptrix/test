@@ -14,7 +14,7 @@ from database.models import ScrollCombine
 from protocols.base import IProtocol
 from services.exchanger import GeckoExchanger
 from services.logger import logger
-from services.tokens import Token, TokenCreator
+from services.tokens import Token, TokenCreator, WETH
 from services.transactions import TransactAgent, check_allowance, SignedTransaction
 from services.utils import wei_to_eth
 from settings.config import MAIN_RPC, MAIN_SCAN
@@ -55,7 +55,13 @@ class SwapBase(Generic[ResponseTransaction]):
         self.dst_token = dst_token
         self.slippage = slippage
 
+        if self.src_token.name == 'ETH':
+            self.src_token.address = WETH
+        if self.dst_token.name == 'ETH':
+            self.dst_token.address = WETH
+
         self.w3 = Web3(Web3.HTTPProvider(MAIN_RPC))
+        self.router = self._get_contract()
 
     def swap(self, amount: Wei) -> ResponseTransaction:
         txn, amount_dst_min = self._get_txn(amount)
