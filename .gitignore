@@ -26,3 +26,4 @@ proxies.txt
 tests
 oz
 *.log
+logs/screenshots/*.png
