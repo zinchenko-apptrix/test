@@ -43,7 +43,7 @@ def parse_args():
         '--protocols',
         help='Участвующие протоколы, через запятую (KyberSwap,SyncSwap)',
         type=str,
-        default='ScrollSwap',
+        default='ElementMarket',
     )
     parser.add_argument(
         '--unique',

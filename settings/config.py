@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 PROJECT = os.getenv('PROJECT', 'Linea')
 ETH_RPC = os.getenv('ETH_RPC', 'https://eth.llamarpc.com')
 MAIN_RPC = os.getenv('MAIN_RPC', 'https://rpc.scroll.io')
@@ -26,4 +28,10 @@ RETRIES_BY_FEE = 10
 PASSWORD = 'd3ja42ngo420'
 
 
-PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Arbitrum One
+ARBITRUM_RPC = os.getenv('ARBITRUM_RPC', 'https://arb1.arbitrum.io/rpc')
+
+# Binance
+BINANCE_API_KEY = os.getenv('BINANCE_API_KEY')
+BINANCE_SECRET = os.getenv('BINANCE_SECRET')
+

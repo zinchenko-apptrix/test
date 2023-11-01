@@ -22,6 +22,7 @@ conf/
 venv/
 .env
 accs.tsv
+acc2.tsv
 proxies.txt
 tests
 oz

@@ -11,7 +11,7 @@ from web3.contract.contract import ContractFunctions
 from web3.types import Wei
 
 from database.models import ScrollCombine
-from protocols.base import IProtocol
+from protocols.base import IProtocol, ContractMixin
 from services.exchanger import GeckoExchanger
 from services.logger import logger
 from services.tokens import Token, TokenCreator, WETH
@@ -40,7 +40,7 @@ class AggregatorTransaction(BaseTransaction):
 ResponseTransaction = TypeVar('ResponseTransaction', bound=BaseTransaction)
 
 
-class SwapBase(Generic[ResponseTransaction]):
+class SwapBase(Generic[ResponseTransaction], ContractMixin):
     exchanger: Type[GeckoExchanger] = GeckoExchanger
 
     def __init__(
@@ -76,12 +76,6 @@ class SwapBase(Generic[ResponseTransaction]):
         if self.dst_token.decimals == 6:
             return dst_amount_with_slippage // 10 ** 4 * 10 ** 4
         return dst_amount_with_slippage
-
-    def _get_contract(self):
-        with open(self.ABI) as file:
-            return self.w3.eth.contract(
-                address=self.CONTRACT, abi=json.load(file)
-            )
 
 
 SwapClass = TypeVar('SwapClass', bound=SwapBase)

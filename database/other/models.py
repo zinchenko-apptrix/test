@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, select, func, ForeignKey, desc
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from database.models import MethodManager
 from settings.config import PROJECT
 from database.db import Base, session
 
@@ -153,3 +154,18 @@ class AddressProxy(Base):
         session.add(obj)
         session.commit()
         return obj
+
+
+class BinanceWithdrawal(MethodManager):
+    __tablename__ = 'BinanceWithdrawals'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    address: Mapped[str] = mapped_column(index=True)
+    privateKey: Mapped[str] = mapped_column(nullable=True)
+    network: Mapped[str]
+    currency: Mapped[str]
+    amount: Mapped[float] = mapped_column(default=0)
+    creationDate = mapped_column(DateTime, default=datetime.utcnow())
+    binance_id: Mapped[str]
+
+    def __repr__(self):
+        return f"Кошелек {self.address}"

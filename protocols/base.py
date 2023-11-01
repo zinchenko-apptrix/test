@@ -1,6 +1,5 @@
+import json
 from abc import ABC, abstractmethod
-
-from services.logger import logger
 
 
 class IProtocol(ABC):
@@ -19,3 +18,11 @@ class IProtocol(ABC):
     @abstractmethod
     def name(self):
         ...
+
+
+class ContractMixin:
+    def _get_contract(self):
+        with open(self.ABI) as file:
+            return self.w3.eth.contract(
+                address=self.CONTRACT, abi=json.load(file)
+            )

@@ -41,13 +41,14 @@ class TransactAgent:
         max_gas_price: Wei,
         max_gas_limit: int,
         max_gas_price_l1: Wei = None,
+        rpc: str = MAIN_RPC,
     ):
         self.account = account
         self.max_gas_price = max_gas_price
         self.max_gas_limit = max_gas_limit
         self.max_gas_price_l1 = max_gas_price_l1
 
-        self.w3 = Web3(Web3.HTTPProvider(MAIN_RPC))
+        self.w3 = Web3(Web3.HTTPProvider(rpc))
         self.w3_l1 = Web3(Web3.HTTPProvider(ETH_RPC))
 
     @_check_max_gas_price_l1
@@ -73,7 +74,7 @@ class TransactAgent:
     def _create_txn_data(self, txn_function: ContractFunctions, value: int) -> dict:
         txn_data = {
             'from': self.account.address,
-            'gasPrice': self._get_suitable_gas_price(self.max_gas_price, self.w3),
+            'gasPrice': get_suitable_gas_price(self.max_gas_price, self.w3),
             'nonce': self.w3.eth.get_transaction_count(self.account.address),
         }
         if value is not None:
@@ -88,18 +89,6 @@ class TransactAgent:
         if receipt.status != 1:
             raise ValueError(f'Transaction Failed {MAIN_SCAN}{txn_hash.hex()}')
         return receipt.transactionHash.hex(), receipt.gasUsed
-
-    @staticmethod
-    def _get_suitable_gas_price(max_gas_price: Wei, w3: Web3) -> int:
-        while True:
-            eth_gas_price = int(w3.eth.gas_price * GAS_PRICE_UP_RATE)
-            if eth_gas_price <= max_gas_price:
-                return eth_gas_price
-            logger.warning(
-                f'Exceeded gas price {w3.manager.provider.endpoint_uri} '
-                f'{eth_gas_price} wei. Waiting'
-            )
-            sleep(GAS_WAITING)
 
     def _get_suitable_gas_from_encoded_txn(self, txn: dict) -> int:
         return self._get_suitable_gas(self.w3.eth.estimate_gas, txn)
@@ -126,3 +115,16 @@ def check_allowance(token: Token, account: LocalAccount, spender: str, value: We
     if token.allowance(account.address, spender) < value:
         value *= 10
         return token.contr.functions.approve(spender, value)
+
+
+def get_suitable_gas_price(max_gas_price: Wei, w3: Web3) -> int:
+    while True:
+        eth_gas_price = int(w3.eth.gas_price * GAS_PRICE_UP_RATE)
+        if eth_gas_price <= max_gas_price:
+            return eth_gas_price
+        logger.warning(
+            f'Exceeded gas price {w3.manager.provider.endpoint_uri} '
+            f'{eth_gas_price} wei. Waiting'
+        )
+        sleep(GAS_WAITING)
+
