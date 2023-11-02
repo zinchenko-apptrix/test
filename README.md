@@ -129,7 +129,7 @@ __Передаваемые аргументы:__
 `python combine.py --accounts-file accs.tsv --min-balance 50 --min-remains 0.001 --tokens ETH,USDC,USDT --protocols SyncSwap,KyberSwap --min-count-txn 1 --max-count-txn 3 --min-amount-stables 90 --max-amount-stables 100 --min-amount-eth 40 --max-amount-eth 50 --max-gas-price 250000000000 --slippage-eth 1 --slippage-stable 2 --retries 10 --retry-delay 50 --min-delay 1 --max-delay 3`
 
 
-## Запуск combine.py
+## Запуск binance_rhino.py
 
 __Передаваемые аргументы:__
 
@@ -150,4 +150,4 @@ __Передаваемые аргументы:__
     --max-delay - максимальная задержка между свапами
     
 Пример запуска:
-`python combine.py --accounts-file accs.tsv --max-gas-price-l1 500000000000 --max-gas-price-l2 500000000000 --min-delay 1 --max-delay 3`
+`python binance_rhino.py --accounts-file accs.tsv --max-gas-price-l1 500000000000 --max-gas-price-l2 500000000000 --min-delay 1 --max-delay 3`
