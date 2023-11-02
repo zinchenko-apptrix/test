@@ -9,11 +9,19 @@
  - Используются прокси сервера из таблицы Proxy
 
 
+### binance_rhino.py
+ - Вывод ETH из бинанса в арбитрум, после получения средств - мост через https://app.rhino.fi/ в сеть Scroll
+ - Берет адреса из файла tsv, берет приватные ключи из таблицы Accounts
+ - Создаёт запись в таблице BinanceWithdrawals и RhinoBridge
+ - Используются прокси сервера из таблицы Proxy
+
+
 ##### Таблица доступных протоколов и токенов
 
-|          | ETH | USDC | USDT |
-|----------|:---:|:----:|:----:|
-| PunkSwap |  +  |  +   |  +   |
+|            | ETH | USDC | USDT |
+|------------|:---:|:----:|:----:|
+| PunkSwap   |  +  |  +   |  +   |
+| ScrollSwap |  +  |      |  +   |
 
 
 ## Подготовка к запуску
@@ -46,7 +54,10 @@ __Необходимо создать .env файл со следующими к
     POSTGRES_DB=
     ETH_RPC=RPC сети ETHEREUM
     MAIN_RPC=RPC сети SCROLL
+    ARBITRUM_RPC=RPC сети ARBITRUM
     PROJECT=
+    BINANCE_API_KEY=
+    BINANCE_SECRET=
 
 Применить миграции:
 
@@ -116,3 +127,27 @@ __Передаваемые аргументы:__
     
 Пример запуска:
 `python combine.py --accounts-file accs.tsv --min-balance 50 --min-remains 0.001 --tokens ETH,USDC,USDT --protocols SyncSwap,KyberSwap --min-count-txn 1 --max-count-txn 3 --min-amount-stables 90 --max-amount-stables 100 --min-amount-eth 40 --max-amount-eth 50 --max-gas-price 250000000000 --slippage-eth 1 --slippage-stable 2 --retries 10 --retry-delay 50 --min-delay 1 --max-delay 3`
+
+
+## Запуск combine.py
+
+__Передаваемые аргументы:__
+
+    --accounts-file - Путь до tsv файла c аккаунтами 1. Адрес Arbitrum 2. min_ETH 3. max_ETH 4. max_binance_fee_withdrawal
+    
+    --full-balance-bridge - если передан параметр (1), то в бридже будет использоваться 
+    весь баланс арбитрума. Если не передан параметр, то в бридже используется то 
+    количество ETH, которое было выведено из бинанса
+    
+    --decimals - количество знаков после точки в сумме вывода из бинанса
+    
+    --max-gas-price-l2 - Стоимость газа в сети Arbitrum, WEI
+
+    --max-gas-price-l1 - Стоимость газа в сети ETHEREUM, WEI
+
+    --min-delay - минимальная задержка между свапами
+   
+    --max-delay - максимальная задержка между свапами
+    
+Пример запуска:
+`python combine.py --accounts-file accs.tsv --max-gas-price-l1 500000000000 --max-gas-price-l2 500000000000 --min-delay 1 --max-delay 3`
