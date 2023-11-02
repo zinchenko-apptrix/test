@@ -32,8 +32,8 @@ class WithdrawalBinance:
     def _withdraw(self, amount):
         """Submit request of withdrawal"""
         logger.info(
-            f'Переводим {amount} {self.ccy} на {self.address} '
-            f'в сети {self.network}'
+            f'{self.address} || Withdrawing {amount} {self.ccy} in '
+            f'{self.network} to {self.address}.'
         )
         resp = self.client.withdraw(
             coin=self.ccy,
@@ -42,7 +42,7 @@ class WithdrawalBinance:
             network=self.network,
         )
         withdrawal_id = resp['id']
-        logger.info(f'Перевели {amount} {self.ccy} на {self.address}')
+        logger.info(f'{self.address} || SUCCESS')
         return withdrawal_id
 
     def check_min_transfer(self, amount: float):

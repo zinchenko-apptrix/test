@@ -156,7 +156,7 @@ class AddressProxy(Base):
         return obj
 
 
-class BinanceWithdrawal(MethodManager):
+class BinanceWithdrawal(MethodManager, Base):
     __tablename__ = 'BinanceWithdrawals'
     id: Mapped[int] = mapped_column(primary_key=True)
     address: Mapped[str] = mapped_column(index=True)
